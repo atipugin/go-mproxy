@@ -2,17 +2,18 @@ package mproxy
 
 import (
 	"errors"
-	"math/rand"
 	"net/url"
+	"sync"
 )
 
 var (
-	ErrNoEndpointsAvailable = errors.New("no endpoints available")
-	ErrNoUrls               = errors.New("no urls provided")
+	ErrNoUrls = errors.New("no urls provided")
 )
 
 type Registry struct {
-	Endpoints map[string]*Endpoint
+	Endpoints       []*Endpoint
+	currEndpointIdx int
+	mtx             *sync.Mutex
 }
 
 func NewRegistry(urls []string) (*Registry, error) {
@@ -20,34 +21,28 @@ func NewRegistry(urls []string) (*Registry, error) {
 		return nil, ErrNoUrls
 	}
 
-	e := map[string]*Endpoint{}
+	var e []*Endpoint
 	for _, v := range urls {
 		u, err := url.Parse(v)
 		if err != nil {
 			return nil, err
 		}
 
-		e[u.Host] = NewEndpoint(u)
+		e = append(e, NewEndpoint(u))
 	}
 
-	return &Registry{e}, nil
+	return &Registry{e, 0, &sync.Mutex{}}, nil
 }
 
-func (r *Registry) RandomEndpoint() (*Endpoint, error) {
-	a := r.AvailableEndpoints()
-	if len(a) == 0 {
-		return nil, ErrNoEndpointsAvailable
-	}
+func (r *Registry) Endpoint() *Endpoint {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 
-	return a[rand.Intn(len(a))], nil
-}
+	e := r.Endpoints[r.currEndpointIdx]
 
-func (r *Registry) AvailableEndpoints() []*Endpoint {
-	var e []*Endpoint
-	for _, v := range r.Endpoints {
-		if v.Available {
-			e = append(e, v)
-		}
+	r.currEndpointIdx++
+	if r.currEndpointIdx >= len(r.Endpoints) {
+		r.currEndpointIdx = 0
 	}
 
 	return e

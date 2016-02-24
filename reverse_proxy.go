@@ -1,9 +1,14 @@
 package mproxy
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
+)
+
+var (
+	ErrNoEndpointsAvailable = errors.New("no endpoints available")
 )
 
 type ReverseProxy struct {
@@ -24,15 +29,10 @@ func NewReverseProxy(r *Registry) *ReverseProxy {
 		Dial: func(network, addr string) (net.Conn, error) {
 			d := &net.Dialer{}
 
-			for {
-				e, err := p.Registry.RandomEndpoint()
-				if err != nil {
-					break
-				}
-
+			for i := 0; i < len(p.Registry.Endpoints); i++ {
+				e := p.Registry.Endpoint()
 				conn, err := d.Dial(network, e.URL.Host)
 				if err != nil {
-					e.MarkAsUnavailable()
 					continue
 				}
 
