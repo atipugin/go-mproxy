@@ -6,13 +6,18 @@ import (
 	"net/url"
 )
 
+var (
+	ErrNoEndpointsAvailable = errors.New("no endpoints available")
+	ErrNoUrls               = errors.New("no urls provided")
+)
+
 type Registry struct {
 	Endpoints map[string]*Endpoint
 }
 
 func NewRegistry(urls []string) (*Registry, error) {
 	if len(urls) == 0 {
-		return nil, errors.New("urls not provided")
+		return nil, ErrNoUrls
 	}
 
 	e := map[string]*Endpoint{}
@@ -28,10 +33,13 @@ func NewRegistry(urls []string) (*Registry, error) {
 	return &Registry{e}, nil
 }
 
-func (r *Registry) RandomEndpoint() *Endpoint {
+func (r *Registry) RandomEndpoint() (*Endpoint, error) {
 	a := r.AvailableEndpoints()
+	if len(a) == 0 {
+		return nil, ErrNoEndpointsAvailable
+	}
 
-	return a[rand.Intn(len(a))]
+	return a[rand.Intn(len(a))], nil
 }
 
 func (r *Registry) AvailableEndpoints() []*Endpoint {
