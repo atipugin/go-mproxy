@@ -7,7 +7,9 @@ import (
 )
 
 var (
-	ErrNoUrls = errors.New("no urls provided")
+	ErrNoUrls   = errors.New("no urls provided")
+	ErrNoScheme = errors.New("invalid url scheme provided")
+	ErrNoHost   = errors.New("invalid url host provided")
 )
 
 type Registry struct {
@@ -26,6 +28,12 @@ func NewRegistry(urls []string) (*Registry, error) {
 		u, err := url.Parse(v)
 		if err != nil {
 			return nil, err
+		}
+		if len(u.Scheme) == 0 {
+			return nil, ErrNoScheme
+		}
+		if len(u.Host) == 0 {
+			return nil, ErrNoScheme
 		}
 
 		e = append(e, NewEndpoint(u))
